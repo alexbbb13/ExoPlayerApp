@@ -2,20 +2,22 @@ package com.alexb.testexoplayerapp.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
-import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.location.Location
-import android.location.LocationManager
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Looper
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
 import com.alexb.testexoplayerapp.R
 import com.alexb.testexoplayerapp.databinding.ActivityMainBinding
+import com.alexb.testexoplayerapp.sensor.ShakeDetector
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.gms.location.*
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,12 +43,12 @@ class MainActivity : AppCompatActivity() {
         override fun onLocationResult(locationResult: LocationResult?) {
             locationResult ?: return
             for (location in locationResult.locations){
-                // Update UI with location data
-                // ...
+                viewModel.onNextLocation(location)
             }
         }
     }
     lateinit var fusedLocationClient: FusedLocationProviderClient
+    lateinit var shakeDetector: ShakeDetector
     lateinit var player: SimpleExoPlayer
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,9 +56,40 @@ class MainActivity : AppCompatActivity() {
         setContentView(viewBinding.root)
         initializePlayer()
         //ask for location permissions
-        locationPermissionRequest.launch(arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION))
+        locationPermissionRequest.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+        inializeSensorListener()
+        setViewmodelObservers()
+    }
+
+    private fun inializeSensorListener() {
+        shakeDetector = ShakeDetector()
+        shakeDetector.setOnShakeListener(object:ShakeDetector.OnShakeListener{
+            override fun onShake(count: Int) {
+                viewModel.onShake()
+            }
+        })
+        shakeDetector.init(this)
+    }
+
+    private fun setViewmodelObservers() {
+        viewModel.shouldRestartPlayer().observe(this, Observer<Boolean> { shouldRestart ->
+            if (shouldRestart) {
+                player.seekTo(0);
+                player.setPlayWhenReady(true)
+            }
+        })
+        viewModel.shouldPausePlayer().observe(this, Observer<Boolean> { shouldPause ->
+            if (shouldPause) {
+                player.pause()
+            } else {
+                player.setPlayWhenReady(true)
+            }
+        })
     }
 
     private fun initializePlayer() {
@@ -73,8 +106,9 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingPermission")
     private fun getLastLocationAndStartLocationUpdates() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        fusedLocationClient.lastLocation.addOnSuccessListener { location : Location? ->
-                location?.let {
+        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+            if(location==null) throw RuntimeException("Location is null")
+            location?.let {
                     //Report initial location to viewModel
                     viewModel.onInitialLocationSet(it)
                     startLocationUpdates()
@@ -85,11 +119,13 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         stopLocationUpdates()
+        shakeDetector.pause()
     }
 
     override fun onResume() {
         super.onResume()
         getLastLocationAndStartLocationUpdates()
+        shakeDetector.resume()
     }
 
     @SuppressLint("MissingPermission")
@@ -99,9 +135,11 @@ class MainActivity : AppCompatActivity() {
             fastestInterval = 5000
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
-        fusedLocationClient.requestLocationUpdates(locationRequest,
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
             locationCallback,
-            Looper.getMainLooper())
+            Looper.getMainLooper()
+        )
     }
 
     private fun stopLocationUpdates() {
