@@ -1,7 +1,6 @@
 package com.alexb.testexoplayerapp.ui
 
 import android.location.Location
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -16,8 +15,8 @@ class MainActivityViewModel : ViewModel() {
     val seekFromCurrentPlusMs: MutableLiveData<Int> by lazy {
         MutableLiveData<Int>()
     }
-    val setVolumePlus: MutableLiveData<Int> by lazy {
-        MutableLiveData<Int>()
+    val setVolumePlus: MutableLiveData<Float> by lazy {
+        MutableLiveData<Float>()
     }
     lateinit var lastLocation: Location
 
@@ -34,28 +33,25 @@ class MainActivityViewModel : ViewModel() {
 
     fun onInitialLocationSet(location: Location) {
         lastLocation = location
-        Log.d("doxxxtor", "Initial location ${location.latitude} - ${location.longitude}")
     }
 
     fun onNextLocation(location: Location) {
         val distance = lastLocation.distanceTo(location)
-        Log.d("doxxxtor", "Next location ${location.latitude} - ${location.longitude} , dist = $distance")
-        if (distance > 10) {
+        if (distance > DISTANCE_THRESHOLD) {
             shouldRestartPlayer.postValue(true)
         }
-//   2. Using the user’s location, a change of 10 meters of the current and previous location
-//   will reset the video and replay from the start.
-        lastLocation = location
-
     }
 
-//    3. A shake of the device should pause the video.
-//    3a.  next shake unpauses the video
+    /*
+     2. Using the user’s location, a change of 10 meters of the current and previous location
+     will reset the video and replay from the start.
 
+      3. A shake of the device should pause the video.
+      3a.  next shake unpauses the video
+    */
     fun onShake() {
-        Log.d("doxxxtor", "Shake event")
-            shouldPausePlayer.postValue(playerPaused)
-            playerPaused  = !playerPaused
+        shouldPausePlayer.postValue(playerPaused)
+        playerPaused = !playerPaused
     }
 
     /*
@@ -65,9 +61,8 @@ class MainActivityViewModel : ViewModel() {
     */
     fun onRotateZ(value: Float) {
         //10% of G-force, where 1 means 90 degrees angle
-        Log.d("doxxxtor", "RotateZ event, value = $value")
-        if(Math.abs(value) > ROTATE_Z_THRESHOLD) {
-            if(value > 0) {
+        if (Math.abs(value) > ROTATE_Z_THRESHOLD) {
+            if (value > 0) {
                 //seek backwards 5000ms
                 seekFromCurrentPlusMs.postValue(-5000)
             } else {
@@ -77,7 +72,13 @@ class MainActivityViewModel : ViewModel() {
         }
     }
 
+    fun onRotateY(value: Float) {
+        setVolumePlus.postValue(value)
+    }
+
     companion object {
         const val ROTATE_Z_THRESHOLD = 0.1f
+        const val ROTATE_Y_THRESHOLD = 0.1f
+        const val DISTANCE_THRESHOLD = 10f
     }
 }

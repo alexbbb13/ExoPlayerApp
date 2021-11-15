@@ -34,15 +34,16 @@ class MainActivity : AppCompatActivity() {
             }
             permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
                 // Only approximate location access granted.
-            } else -> {
-            // No location access granted.
-        }
+            }
+            else -> {
+                // No location access granted.
+            }
         }
     }
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult?) {
             locationResult ?: return
-            for (location in locationResult.locations){
+            for (location in locationResult.locations) {
                 viewModel.onNextLocation(location)
             }
         }
@@ -68,13 +69,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun inializeSensorListener() {
         shakeDetector = ShakeDetector()
-        shakeDetector.setOnShakeListener(object:ShakeDetector.OnShakeListener{
+        shakeDetector.setOnShakeListener(object : ShakeDetector.OnShakeListener {
             override fun onShake(count: Int) {
                 viewModel.onShake()
             }
 
             override fun onRotateZ(value: Float) {
                 viewModel.onRotateZ(value)
+            }
+
+            override fun onRotateY(value: Float) {
+                viewModel.onRotateY(value)
             }
         })
         shakeDetector.init(this)
@@ -97,6 +102,12 @@ class MainActivity : AppCompatActivity() {
         viewModel.seekFromCurrentPlusMs.observe(this, Observer<Int> { seekValue ->
             player.seekTo(player.contentPosition + seekValue)
         })
+        viewModel.setVolumePlus.observe(this, Observer<Float> { volumeDeltaValue ->
+            var volumeDelta = volumeDeltaValue
+            if (volumeDelta < 0) volumeDelta = 0f
+            else if (volumeDelta > 1) volumeDelta = 1f
+            player.volume = volumeDelta
+        })
     }
 
     private fun initializePlayer() {
@@ -114,13 +125,13 @@ class MainActivity : AppCompatActivity() {
     private fun getLastLocationAndStartLocationUpdates() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-            if(location==null) throw RuntimeException("Location is null")
+            if (location == null) throw RuntimeException("Location is null")
             location?.let {
-                    //Report initial location to viewModel
-                    viewModel.onInitialLocationSet(it)
-                    startLocationUpdates()
-                }
+                //Report initial location to viewModel
+                viewModel.onInitialLocationSet(it)
+                startLocationUpdates()
             }
+        }
     }
 
     override fun onPause() {

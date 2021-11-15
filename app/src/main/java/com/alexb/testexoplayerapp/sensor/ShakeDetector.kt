@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import com.alexb.testexoplayerapp.ui.MainActivityViewModel.Companion.ROTATE_Y_THRESHOLD
 import com.alexb.testexoplayerapp.ui.MainActivityViewModel.Companion.ROTATE_Z_THRESHOLD
 
 class ShakeDetector : SensorEventListener {
@@ -12,6 +13,7 @@ class ShakeDetector : SensorEventListener {
     private var mShakeCount = 0
     private var mShakeTimestamp = 0L
     private var mRotateZTimestamp = 0L
+    private var mRotateYTimestamp = 0L
     override fun onSensorChanged(event: SensorEvent) {
         if (mShakeListener != null) {
             val x = event.values[0]
@@ -36,16 +38,27 @@ class ShakeDetector : SensorEventListener {
                 mShakeCount++
                 mShakeListener!!.onShake(mShakeCount)
             }
-            if( gX > ROTATE_Z_THRESHOLD || gX < -ROTATE_Z_THRESHOLD ) {
+            if (gX > ROTATE_Z_THRESHOLD || gX < -ROTATE_Z_THRESHOLD) {
                 //Big enough rotation
                 val now = System.currentTimeMillis()
-                if(mRotateZTimestamp > 0 && now > mRotateZTimestamp + ROTATE_Z_HOLD_TIME_MS) {
+                if (mRotateZTimestamp > 0 && now > mRotateZTimestamp + ROTATE_Z_HOLD_TIME_MS) {
                     mShakeListener!!.onRotateZ(gX)
                     mRotateZTimestamp = now
                 }
             } else {
                 //reset the timestamp
                 mRotateZTimestamp = System.currentTimeMillis()
+            }
+            if (gY > ROTATE_Y_THRESHOLD || gY < -ROTATE_Y_THRESHOLD) {
+                //Big enough rotation
+                val now = System.currentTimeMillis()
+                if (mRotateYTimestamp > 0 && now > mRotateYTimestamp + ROTATE_Y_HOLD_TIME_MS) {
+                    mShakeListener!!.onRotateY(gY)
+                    mRotateYTimestamp = now
+                }
+            } else {
+                //reset the timestamp
+                mRotateYTimestamp = System.currentTimeMillis()
             }
         }
     }
@@ -54,6 +67,7 @@ class ShakeDetector : SensorEventListener {
     interface OnShakeListener {
         fun onShake(count: Int)
         fun onRotateZ(value: Float)
+        fun onRotateY(value: Float)
     }
 
     fun setOnShakeListener(listener: OnShakeListener?) {
@@ -83,5 +97,6 @@ class ShakeDetector : SensorEventListener {
         private const val SHAKE_SLOP_TIME_MS = 500
         private const val SHAKE_COUNT_RESET_TIME_MS = 3000
         private const val ROTATE_Z_HOLD_TIME_MS = 500
+        private const val ROTATE_Y_HOLD_TIME_MS = 500
     }
 }
