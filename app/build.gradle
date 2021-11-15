@@ -46,6 +46,9 @@ dependencies {
     implementation 'com.google.android.exoplayer:exoplayer:2.16.0'
     //Multidex - > 80k methods on API 16 Multidex support prior to Android 5.0
     implementation("androidx.multidex:multidex:2.0.1")
+    //FusedLocationProviderClient
+    implementation 'com.google.android.gms:play-services-location:18.0.0'
+    implementation 'androidx.activity:activity-ktx:1.3.0'
 
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
