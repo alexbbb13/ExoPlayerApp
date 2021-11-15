@@ -72,6 +72,10 @@ class MainActivity : AppCompatActivity() {
             override fun onShake(count: Int) {
                 viewModel.onShake()
             }
+
+            override fun onRotateZ(value: Float) {
+                viewModel.onRotateZ(value)
+            }
         })
         shakeDetector.init(this)
     }
@@ -89,6 +93,9 @@ class MainActivity : AppCompatActivity() {
             } else {
                 player.setPlayWhenReady(true)
             }
+        })
+        viewModel.seekFromCurrentPlusMs.observe(this, Observer<Int> { seekValue ->
+            player.seekTo(player.contentPosition + seekValue)
         })
     }
 
